@@ -3,21 +3,24 @@ const { signToken } = require("../utils/auth");
 const { AuthenticationError } = require("apollo-server-express");
 
 const resolvers = {
-  Query: {
-    me: async (parent, args, context) => {
-      if (context.user) {
-        const userData = await User.findOne({ _id: context.user._id })
-          .select("-__v -password")
-          .populate("books");
-
-        return userData;
-      }
-
-      throw new AuthenticationError("Not logged in");
-    },
-  },
+    Query: {
+        users: async () => {
+          return User.find({});
+        },
+        user: async (parent, { userId }) => {
+            console.log('user called');
+            return await User.findOne({ _id: userId });
+        },
+        me: async (parent, args, context) => {
+          console.log('me called');
+          if (context.user) {
+            return await User.findOne({ _id: context.user._id });
+          }
+          throw new AuthenticationError('You need to be logged in! (me route)');
+        },
+      },
   Mutation: {
-    createUser: async (parent, args) => {
+    addUser: async (parent, args) => {
       try {
         const user = await User.create(args);
 
@@ -27,7 +30,7 @@ const resolvers = {
         console.log(err);
       }
     },
-    login: async (parent, { email, password }) => {
+    login: async (parent, { email, password }, context) => {
       const user = await User.findOne({ email });
 
       if (!user) {
@@ -43,7 +46,7 @@ const resolvers = {
       const token = signToken(user);
       return { token, user };
     },
-    saveBook: async (parent, args, context) => {
+    addBook: async (parent, args, context) => {
       if (context.user) {
         const updatedUser = await User.findByIdAndUpdate(
           { _id: context.user._id },
